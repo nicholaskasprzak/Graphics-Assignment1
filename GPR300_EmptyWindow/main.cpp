@@ -20,15 +20,24 @@ void resizeFrameBufferCallback(GLFWwindow* window, int width, int height);
 * 
 * vPos is used to define the vertices
 * positions through gl_Position
+* 
+* The time uniform is used to modify the positions
+* of the vertices on the X and Y axes.
+* Multiplying the x position by the absolute value
+* of sin time creates the effect of the vertices
+* shrinking and growing on the x axis. Adding half
+* of sin time to the y position creates the effect
+* of the vertices moving up and down on the y axis.
 */
 const char* vertexShaderSource =
 "#version 450						 \n"
 "layout (location = 0) in vec3 vPos; \n"
 "layout (location = 1) in vec3 vCol; \n"
-"out vec3 Color;					 \n"	
+"out vec3 Color;					 \n"
+"uniform float _Time;				 \n"
 "void main(){						 \n"
 "	Color = vCol;					 \n"
-"	gl_Position = vec4(vPos, 1.0);   \n"
+"	gl_Position = vec4(abs(sin(_Time)) * vPos.x, (0.5 * sin(_Time)) + vPos.y, vPos.z, 1.0);\n"
 "}									 \0";
 
 /*
@@ -39,15 +48,16 @@ const char* vertexShaderSource =
 * 
 * Using time, the fragments
 * pulse between their original color
-* and black.
+* and black. That value is multiplied
+* by 2 to amplify the glowing effect.
 */
 const char* fragmentShaderSource =
 "#version 450									  \n"
-"out vec4 FragColor;							  \n"
 "in vec3 Color;									  \n"
+"out vec4 FragColor;							  \n"
 "uniform float _Time;							  \n"
 "void main(){									  \n"
-"	FragColor = vec4(abs(sin(_Time))*Color, 1.0); \n"
+"	FragColor = vec4(abs(sin(_Time) * 2)*Color, 1.0); \n"
 "}												  \0";
 
 /*
@@ -63,6 +73,28 @@ const float vertexData[] = {
 	-0.5, -0.5, +0.0,	1.0, 0.0, 0.0, 1.0,
 	+0.5, -0.5, +0.0,	0.0, 1.0, 0.0, 1.0,
 	+0.0, +0.5, +0.0,	0.0, 0.0, 1.0, 1.0
+};
+
+/*
+* A second array of vertex data that creates
+* two triangles. The two triangles are reflective
+* of each other on the y axis, creating a form
+* similar to that of a butterfly. Its colored
+* white at its center and black at its outer
+* vertices.
+* 
+* glDrawArrays() has to contain 6 to account for
+* having to draw 6 vertices.
+*/
+const float altVertexData[] = {
+	//x		y	   z
+	-0.0, -0.5, +0.0, 1.0, 1.0, 1.0, 1.0,
+	+1.0, -1.0, +0.0, 0.0, 0.0, 0.0, 1.0,
+	+0.5, +0.5, +0.0, 0.0, 0.0, 0.0, 1.0,
+
+	-1.0, -1.0, +0.0, 0.0, 0.0, 0.0, 1.0,
+	+0.0, -0.5, +0.0, 1.0, 1.0, 1.0, 1.0,
+	-0.5, +0.5, +0.0, 0.0, 0.0, 0.0, 1.0
 };
 
 int main() {
@@ -184,7 +216,7 @@ int main() {
 	unsigned int vertexBufferObject;
 	glGenBuffers(1, &vertexBufferObject);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertexData), vertexData, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(altVertexData), altVertexData, GL_STATIC_DRAW);
 
 	/*
 	* Defines how the vertex data provided will be interpreted by the verte shader by 
@@ -218,7 +250,7 @@ int main() {
 		glUniform1f(glGetUniformLocation(shaderProgram, "_Time"), time);
 		
 		// Draws the triangle using the data given to the program
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
