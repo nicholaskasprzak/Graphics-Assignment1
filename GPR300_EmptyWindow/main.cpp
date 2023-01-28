@@ -6,32 +6,63 @@
 //void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void resizeFrameBufferCallback(GLFWwindow* window, int width, int height);
 
-// Source code for vertex shader
+/*
+* Source code for vertex shader
+* 
+* Variables from the currently bound
+* VBO pass in values from their ids
+* 
+* Takes in vPos at location 1 and vCol
+* at location 2
+* 
+* vColor is passed out to the fragment
+* shader at Color
+* 
+* vPos is used to define the vertices
+* positions through gl_Position
+*/
 const char* vertexShaderSource =
 "#version 450						 \n"
 "layout (location = 0) in vec3 vPos; \n"
+"layout (location = 1) in vec3 vCol; \n"
+"out vec3 Color;					 \n"	
 "void main(){						 \n"
+"	Color = vCol;					 \n"
 "	gl_Position = vec4(vPos, 1.0);   \n"
 "}									 \0";
 
-// Source code for fragment shader
+/*
+* Source code for the fragment shader
+* 
+* Takes in Color from the vertex shader
+* and passes out FragColor
+* 
+* Using time, the fragments
+* pulse between their original color
+* and black.
+*/
 const char* fragmentShaderSource =
-"#version 450								\n"
-"out vec4 FragColor;						\n"
-"void main(){								\n"
-"	FragColor = vec4(1.0, 1.0, 1.0, 1.0);	\n"
-"}											\0";
+"#version 450									  \n"
+"out vec4 FragColor;							  \n"
+"in vec3 Color;									  \n"
+"uniform float _Time;							  \n"
+"void main(){									  \n"
+"	FragColor = vec4(abs(sin(_Time))*Color, 1.0); \n"
+"}												  \0";
 
 /*
 * An array of floats representing vertex data
 * Positions supplied are read counterclockwise
 * and must be supplied as such
+* 
+* Colors are supplied in an RGBA format and each
+* set corresponds to a vertex's color
 */
 const float vertexData[] = {
 	//x    y     z
-	-0.5, -0.5, +0.0,
-	+0.5, -0.5, +0.0,
-	+0.0, +0.5, +0.0
+	-0.5, -0.5, +0.0,	1.0, 0.0, 0.0, 1.0,
+	+0.5, -0.5, +0.0,	0.0, 1.0, 0.0, 1.0,
+	+0.0, +0.5, +0.0,	0.0, 0.0, 1.0, 1.0
 };
 
 int main() {
@@ -162,9 +193,18 @@ int main() {
 	* and the offset in bytes from the start of the vertex
 	* 
 	* The attribute is then enabled by reference of its id
+	* 
+	* The first attribute defines position by reading in three values from a 7 float vertex
+	* from the start of the vertex. Its id is 0
+	* 
+	* The second attribute defines color by reading in four values from a 7 float vertex
+	* starting at the fourth value. Its id is 1
 	*/
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (const void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 7, (const void*)0);
 	glEnableVertexAttribArray(0);
+
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(float) * 7, (const void*)(sizeof(float) * 3));
+	glEnableVertexAttribArray(1);
 
 	while (!glfwWindowShouldClose(window)) {
 		glClearColor(0.2f, 0.3f, 0.6f, 1.0f);
@@ -172,6 +212,10 @@ int main() {
 
 		// Installs the program object as part of the rendering state
 		glUseProgram(shaderProgram);
+
+		// Supplies the _Time uniform with the time value
+		float time = (float)glfwGetTime();
+		glUniform1f(glGetUniformLocation(shaderProgram, "_Time"), time);
 		
 		// Draws the triangle using the data given to the program
 		glDrawArrays(GL_TRIANGLES, 0, 3);
